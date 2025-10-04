@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>💈 NR Barbearia - Sistema de Atendimento</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f7f7f7;
+    margin: 0;
+    padding: 0;
+  }
+  .container {
+    max-width: 800px;
+    margin: 30px auto;
+    background: #fff;
+    padding: 20px 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  h1, h2 {
+    text-align: center;
+    color: #333;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  label {
+    font-weight: bold;
+  }
+  input, select, button {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+  button {
+    background: #1e7d4d;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #155c38;
+  }
+  .mensagem {
+    margin: 15px 0;
+    padding: 10px;
+    background: #e6ffe6;
+    border: 1px solid #5bb75b;
+    color: #2e6f3d;
+    border-radius: 8px;
+    display: none;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  table th, table td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+  }
+  table th {
+    background: #f0f0f0;
+  }
+  .totais {
+    margin-top: 15px;
+    font-size: 18px;
+    text-align: right;
+  }
+  .apagar {
+    background: #c0392b;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .apagar:hover {
+    background: #a5281c;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>💈 NR Barbearia - Sistema de Atendimento</h1>
+
+    <form id="atendimento-form">
+      <label>Nome do Cliente:</label>
+      <input type="text" id="cliente" required />
+
+      <label>Data do Atendimento:</label>
+      <input type="date" id="data" required />
+
+      <label>Hora do Atendimento:</label>
+      <input type="time" id="hora" required />
+
+      <label>Serviço:</label>
+      <select id="servico" required>
+        <option value="17.50">Corte de Cabelo - R$17,50</option>
+        <option value="17.50">Barba completa - R$17,50</option>
+        <option value="25.00">Corte + Sobrancelha - R$25,00</option>
+        <option value="5.00">Barba simples - R$5,00</option>
+        <option value="32.50">Corte + Barba - R$32,50</option>
+        <option value="40.00">Combo - R$40,00</option>
+        <option value="7.50">Sobrancelha - R$7,50</option>
+        <option value="10.00">Pomada - R$10,00</option>
+      </select>
+
+      <label>Forma de Pagamento:</label>
+      <select id="pagamento" required>
+        <option value="Dinheiro">Dinheiro</option>
+        <option value="Pix">Pix</option>
+        <option value="Cartão">Cartão</option>
+      </select>
+    
+      <label for="gorjeta">Gorjeta: </label>
+      <input type="number" id="gorjeta" placeholder="valor" step="0.01" />
+
+      <button type="submit">Registrar Atendimento</button>
+    </form>
+
+    <div id="mensagem" class="mensagem"></div>
+
+    <h2>📜 Histórico de Atendimentos</h2>
+    <table id="tabela-atendimentos">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Hora</th>
+          <th>Cliente</th>
+          <th>Serviço</th>
+          <th>Pagamento</th>
+          <th>Valor</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="totais">
+      <p><strong>Total do Dia:</strong> R$<span id="total-dia">0.00</span></p>
+      <p><strong>Total da Semana:</strong> R$<span id="total-semana">0.00</span></p>
+    </div>
+  </div>
+
+<script>
+  const form = document.getElementById("atendimento-form");
+  const tabela = document.querySelector("#tabela-atendimentos tbody");
+  const mensagem = document.getElementById("mensagem");
+  const totalDiaEl = document.getElementById("total-dia");
+  const totalSemanaEl = document.getElementById("total-semana");
+
+  let atendimentos = JSON.parse(localStorage.getItem("atendimentos")) || [];
+
+  document.addEventListener("DOMContentLoaded", atualizarTabela);
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const cliente = document.getElementById("cliente").value;
+    const data = document.getElementById("data").value;
+    const hora = document.getElementById("hora").value;
+
+    const servicoSelect = document.getElementById("servico");
+    const valor = parseFloat(servicoSelect.value);
+    let servico = servicoSelect.options[servicoSelect.selectedIndex].text;
+
+    const pagamento = document.getElementById("pagamento").value;
+
+    let gorjeta = document.getElementById("gorjeta").value;
+    gorjeta = gorjeta === "" ? 0 : parseFloat(gorjeta);
+
+    if (gorjeta > 0) {
+      servico += ` + R$${gorjeta.toFixed(2)} de gorjeta`;
+    }
+
+    const atendimento = { cliente, data, hora, servico, pagamento, valor: valor + gorjeta };
+    atendimentos.push(atendimento);
+    salvarLocal();
+    atualizarTabela();
+    mostrarMensagem(atendimento);
+
+    form.reset();
+  });
+
+  function salvarLocal() {
+    localStorage.setItem("atendimentos", JSON.stringify(atendimentos));
+  }
+
+  function atualizarTabela() {
+    tabela.innerHTML = "";
+    let totalDia = 0;
+    let totalSemana = 0;
+
+    atendimentos.forEach((at, index) => {
+      const row = tabela.insertRow();
+      row.innerHTML = `
+        <td>${formatarData(at.data)}</td>
+        <td>${at.hora}</td>
+        <td>${at.cliente}</td>
+        <td>${at.servico}</td>
+        <td>${at.pagamento}</td>
+        <td>R$${at.valor.toFixed(2)}</td>
+        <td><button class="apagar" onclick="apagarAtendimento(${index})">X</button></td>
+      `;
+
+      if (at.data === getHojeISO()) totalDia += at.valor;
+      if (estaNaSemana(at.data)) totalSemana += at.valor;
+    });
+
+    totalDiaEl.textContent = totalDia.toFixed(2);
+    totalSemanaEl.textContent = totalSemana.toFixed(2);
+  }
+
+  function apagarAtendimento(index) {
+    atendimentos.splice(index, 1);
+    salvarLocal();
+    atualizarTabela();
+  }
+
+  function mostrarMensagem(at) {
+    mensagem.style.display = "block";
+    mensagem.innerHTML = `
+      ✅ Atendimento registrado<br>
+      Cliente: ${at.cliente}<br>
+      Serviço: ${at.servico}<br>
+      Forma de Pagamento: ${at.pagamento}<br>
+      Data: ${formatarData(at.data)} às ${at.hora}<br>
+      Total: R$${at.valor.toFixed(2)}
+    `;
+  }
+
+  function formatarData(data) {
+    return data.split("-").reverse().join("/");
+  }
+
+  function getHojeISO() {
+    const hoje = new Date();
+    return hoje.toISOString().split("T")[0];
+  }
+
+  function estaNaSemana(dataStr) {
+    const hoje = new Date();
+    const data = new Date(dataStr);
+    const diff = (hoje - data) / (1000 * 60 * 60 * 24);
+    return diff <= 7 && diff >= 0;
+  }
+</script>
+</body>
+</html>
